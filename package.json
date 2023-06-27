@@ -33,6 +33,11 @@
     "react-native-vector-icons": "^9.2.0",
     "react-native-video": "^5.2.1"
   },
+  
+      "reactNativePermissionsIOS" : [
+            "LocationWhenInUse"
+      ]
+  ,
   "devDependencies": {
     "@babel/core": "^7.21.3",
     "@babel/runtime": "^7.21.0",

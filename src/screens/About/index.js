@@ -1,84 +1,95 @@
-import { View, Text, StyleSheet, TextInput, Button } from 'react-native';
-import React, { useState, useEffect } from 'react';
-import { check, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import React, {useState, useEffect} from 'react';
+import {
+  ImageBackground,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  View,
+  PermissionsAndroid,
+  Platform
+} from 'react-native';
+import { Button } from 'react-native-elements';
+import Permissions, {PERMISSIONS} from 'react-native-permissions';
+import Geolocation from 'react-native-geolocation-service';
 
-const AboutScreen = () => {
-  const [allValues, setAllValues] = useState({
-    Name: '',
-    MobileNo: '',
-    location: '',
-  });
+const Home = props => {
 
-  const changeHandler = (value, field) => {
-    setAllValues({ ...allValues, [field]: value });
-  };
+  const [data, setData] = useState([{}]);
+  const [total, setTotal] = useState([{}]);
 
-  useEffect(() => {
-    checkPermission();
-  }, []);
-
-  const checkPermission = async () => {
-    try {
-      const result = await check(PERMISSIONS.IOS.LOCATION_ALWAYS);
-      switch (result) {
-        case RESULTS.UNAVAILABLE:
-          console.log('Unavailable');
-          break;
-        case RESULTS.DENIED:
-          console.log('Denied');
-          break;
-        case RESULTS.GRANTED:
-          console.log('Granted');
-          break;
-        default:
-          console.log('Default');
-          break;
+  const requestLocationPermission = async () => {
+    if (Platform.OS === "ios") {
+      let permissionStatus = await Permissions.check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+      console.log(permissionStatus);
+      if (permissionStatus === 'denied' || permissionStatus === 'restricted') {
+        permissionStatus = await Permissions.request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+        console.log(permissionStatus);
+        if(permissionStatus === 'granted'){
+            fetchLocation();
+        }
       }
-    } catch (error) {
-      console.log(error);
+    } else {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: "Location Access Required",
+          message: "This App needs to Access your location",
+          buttonPositive: "OK"
+        }
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        console.log("Location permission not granted!");
+      } else {
+        fetchLocation();
+      }
     }
   };
 
-  const handleButtonPress = () => {
-    // Perform the desired action when the button is pressed
-    // For example, call the RequestLocation function
-    RequestLocation();
+  const fetchLocation = () => {
+    Geolocation.getCurrentPosition(
+      (position) => {
+        console.log(position);
+      },
+      (error) => {
+        console.log(error.code, error.message);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
   };
 
-  const RequestLocation = () => {
-    // Implement your logic for requesting location here
-    // This function will be called when the button is pressed
-    alert('Requesting location...');
+  useEffect(() => {
+    requestLocationPermission();
+  }, [props.navigation]);
+
+  const fetchData = async () => {
+    startLocationUpdates();
+    try {
+      const users = await Auth.getAccount();
+      const response = await fetch(
+        API_WEB_URLS.BASE + 'Masters/0/token/AgentLast5Tran/Id/' + users[0].Id,
+      );
+      const data = await response.json();
+      setData(data.data.dataList);
+    } catch (error) {
+      console.error(error);
+    }
   };
+
+  // useFocusEffect(() => {
+  //   fetchData();
+  //   fetchDataTotal();
+  //   return () => {};
+  // });
 
   return (
-    <View style={styles.container}>
-      <View style={styles.inputView}>
-        <TextInput
-          value={allValues.Name}
-          onChangeText={(value) => changeHandler(value, 'Name')}
-          placeholder="Name"
-        />
-      </View>
-      <Button onPress={handleButtonPress} title="Proceed" />
-    </View>
+    <>
+      <SafeAreaView style={{flex: 1}}>
+        <View style={{marginTop: 5}}>
+          <Button style={{height:50, width:100}} name="Get"/>
+        </View>
+      </SafeAreaView>
+    </>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  inputView: {
-    paddingLeft: 10,
-    paddingTop: 5,
-    marginLeft: 10,
-    height: 30,
-    marginTop: 50,
-    borderWidth: 1,
-    borderRadius: 26,
-    width: 300,
-  },
-});
-
-export default AboutScreen;
+export default Home;
